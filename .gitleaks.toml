@@ -1,0 +1,8 @@
+﻿title = "AulaPay Secret Scanning"
+
+[[rules]]
+
+id = "aulapay-api-token"
+description = "Posible API token hardcodeado"
+regex = '''sk_test_[A-Za-z0-9]+'''
+tags = ["secret", "api-key"]
