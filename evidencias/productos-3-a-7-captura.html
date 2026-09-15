@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Evidencias productos 3 a 7 - AulaPay</title>
+<style>
+:root { font-family: "Segoe UI", Arial, sans-serif; color: #17252d; }
+body { margin: 0; padding: 28px; background: #eef3f5; }
+section { width: 1120px; box-sizing: border-box; margin: 0 auto 24px; padding: 26px 30px; background: #fff; border: 1px solid #cbd8dd; box-shadow: 0 4px 16px rgba(20,40,50,.08); }
+h1 { margin: 0 0 14px; color: #164b5d; font-size: 28px; }
+h2 { margin: 0 0 18px; padding-bottom: 9px; border-bottom: 3px solid #29808d; color: #164b5d; font-size: 23px; }
+h3 { margin: 20px 0 8px; color: #21636e; font-size: 18px; }
+p, li { font-size: 16px; line-height: 1.45; }
+ul { margin-top: 6px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.panel { padding: 16px; border: 1px solid #cbd8dd; background: #f7fafb; }
+pre { margin: 0; padding: 14px; overflow: hidden; background: #17252d; color: #e3f0f2; font: 14px/1.45 Consolas, monospace; white-space: pre-wrap; }
+.badge { display: inline-block; padding: 5px 10px; font-weight: 700; color: #fff; background: #27808c; }
+.badge.red { background: #a43d3d; }
+.badge.amber { background: #9b681d; }
+.badge.green { background: #33754d; }
+.callout { padding: 13px 16px; border-left: 5px solid #27808c; background: #edf7f7; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th { padding: 10px; text-align: left; color: #fff; background: #21636e; }
+td { padding: 10px; vertical-align: top; border: 1px solid #cbd8dd; }
+.old td { background: #fff1f1; }
+.new td { background: #eff9f2; }
+code { font-family: Consolas, monospace; }
+</style>
+</head>
+<body>
+<section id="producto-3">
+<h1>Producto 3 - Correccion del codigo vulnerable</h1>
+<div class="grid">
+<div class="panel"><h3>Antes: concatenacion vulnerable</h3><pre>const query =
+  "SELECT id, student_id, amount, payment_date, receipt_url " +
+  "FROM payments WHERE student_id = " + studentId;</pre><p><span class="badge red">RIESGO</span> El identificador se incorporaba directamente a la consulta SQL.</p></div>
+<div class="panel"><h3>Despues: consulta parametrizada y autorizacion</h3><pre>if (requestedStudentId !== authenticatedStudentId) {
+  return res.status(403).json({ error: "Forbidden" });
+}
+
+const query =
+  "SELECT id, student_id, amount, payment_date, receipt_url " +
+  "FROM payments WHERE student_id = $1";
+const result = await db.query(query, [requestedStudentId]);</pre><p><span class="badge green">CORREGIDO</span> Se valida el propietario y se usa el parametro <code>$1</code>.</p></div>
+</div>
+</section>
+<section id="producto-4">
+<h1>Producto 4 - Decision sobre el supuesto secreto</h1>
+<div class="callout"><span class="badge amber">FALSO POSITIVO JUSTIFICADO</span> El valor fue validado como material de ejemplo, no como credencial funcional.</div>
+<table><tr><th>Hallazgo</th><th>Validacion</th><th>Decision y accion</th></tr><tr><td><code>sk_test_51HxxExampleToken</code> en <code>.env.example</code></td><td>Contiene <code>ExampleToken</code>, esta en un archivo de ejemplo y no corresponde a un secreto operativo.</td><td>Clasificar como falso positivo, reemplazar por <code>PAYMENT_API_KEY=REPLACE_WITH_TEST_KEY</code>. Si fuera real: revocar/rotar de inmediato y revisar el historial Git.</td></tr></table>
+</section>
+<section id="producto-5">
+<h1>Producto 5 - Decision sobre la dependencia vulnerable</h1>
+<table><tr><th>Dependencia</th><th>Hallazgo inicial</th><th>Decision</th><th>Riesgo residual</th></tr><tr><td>pdf-generator-lib</td><td>2.4.1, CVE-SIM-2025-1842, severidad MEDIA</td><td><span class="badge green">ACTUALIZAR</span> a 2.4.3, version corregida.</td><td>Residual bajo y aceptable: se mantiene la vigilancia SCA y se bloquea el gate si vuelve a aparecer una version vulnerable.</td></tr></table>
+</section>
+<section id="producto-6">
+<h1>Producto 6 - Condicion de aprobacion del gate</h1>
+<div class="callout"><span class="badge green">GATE APROBABLE CONDICIONALMENTE</span> El despliegue solo puede avanzar cuando todas las condiciones esten verificadas.</div>
+<ul><li>La API devuelve <code>403 Forbidden</code> al solicitar pagos de otro estudiante.</li><li>La consulta SQL usa parametros y no concatena <code>studentId</code>.</li><li>La dependencia esta en 2.4.3 o una version corregida.</li><li>El supuesto secreto esta validado como falso positivo y sustituido por placeholder.</li><li>Las pruebas automatizadas pasan. Si falla una condicion, el gate permanece bloqueado.</li></ul>
+</section>
+<section id="producto-7">
+<h1>Producto 7 - Evidencia API antes/despues</h1>
+<table><tr><th>Momento</th><th>Solicitud</th><th>Resultado</th><th>Interpretacion</th></tr><tr class="old"><td>Antes, hallazgo registrado</td><td><code>X-Student-Id: 1024</code><br><code>GET /api/payments/2048</code></td><td><span class="badge red">200 OK</span></td><td>Un estudiante podia consultar el comprobante de otro estudiante.</td></tr><tr class="new"><td>Despues, prueba actual</td><td><code>X-Student-Id: 1024</code><br><code>GET /api/payments/2048</code></td><td><span class="badge green">403 Forbidden</span><br><code>{"error":"Forbidden"}</code></td><td>La autorizacion bloquea el acceso cruzado. La prueba automatizada pasa.</td></tr></table>
+</section>
+</body>
+</html>

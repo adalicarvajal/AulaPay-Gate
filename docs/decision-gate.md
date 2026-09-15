@@ -36,6 +36,28 @@ También se encontraron:
 
 ![Entregable 2 - Clasificacion priorizada](../evidencias/entregable-2-clasificacion-priorizada.png)
 
+## Evidencias de los productos 3 a 7
+
+### Producto 3 - Correccion del codigo vulnerable
+
+![Producto 3 - Correccion del codigo vulnerable](../evidencias/producto-3.png)
+
+### Producto 4 - Decision sobre el supuesto secreto
+
+![Producto 4 - Decision sobre el supuesto secreto](../evidencias/producto-4.png)
+
+### Producto 5 - Decision sobre la dependencia vulnerable
+
+![Producto 5 - Decision sobre la dependencia vulnerable](../evidencias/producto-5.png)
+
+### Producto 6 - Condicion de aprobacion del gate
+
+![Producto 6 - Condicion de aprobacion del gate](../evidencias/producto-6.png)
+
+### Producto 7 - Evidencia API antes y despues
+
+![Producto 7 - Evidencia API antes y despues](../evidencias/producto-7.png)
+
 \## Correcciones aplicadas
 
 
