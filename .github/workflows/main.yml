@@ -1,29 +1,51 @@
+name: AulaPay CI/CD
+
 on:
   push:
-    branches:
-      - main
-      - vulnerable-demo
-
+    branches: [main, vulnerable-demo]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
 
+permissions:
+  contents: read
+
+jobs:
+  security-gate:
+    name: CI - pruebas y seguridad
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar tres pruebas funcionales
+        run: npm test
+
+      - name: Validar SCA
+        run: node scripts/check-sca.js
+
+      - name: Ejecutar SAST con Semgrep
+        run: |
+          python -m pip install --quiet semgrep
+          semgrep scan --config semgrep.yml app.js --error
 
   deploy-simulation:
-    name: "CD - Preproduccion simulada"
+    name: CD - preproduccion simulada
+    needs: security-gate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-
-    needs:
-      - security-gate
-
     steps:
-      - name: Autorizar despliegue
+      - name: Confirmar artefacto aprobado
         run: |
-          echo "======================================"
-          echo "      FASE CD - PREPRODUCCION"
-          echo "======================================"
-          echo ""
           echo "Todos los controles CI fueron aprobados."
           echo "Security Gate: APROBADO"
-          echo ""
           echo "DESPLIEGUE A PREPRODUCCION AUTORIZADO"

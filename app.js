@@ -74,6 +74,10 @@ app.get("/api/payments/:studentId", authenticateUser, async (req, res) => {
   res.json(result.rows);
 });
 
-app.listen(3000, () => {
-  console.log("AulaPay corregido ejecutándose en http://127.0.0.1:3000");
-});
+if (require.main === module) {
+  app.listen(3000, () => {
+    console.log("AulaPay corregido ejecutándose en http://127.0.0.1:3000");
+  });
+}
+
+module.exports = app;
