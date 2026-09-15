@@ -30,6 +30,12 @@ También se encontraron:
 
 
 
+\## Evidencias de la matriz
+
+![Entregable 1 - Matriz de hallazgos](../evidencias/entregable-1-matriz-hallazgos.png)
+
+![Entregable 2 - Clasificacion priorizada](../evidencias/entregable-2-clasificacion-priorizada.png)
+
 \## Correcciones aplicadas
 
 
