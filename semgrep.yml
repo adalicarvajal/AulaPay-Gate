@@ -1,8 +1,7 @@
 ﻿rules:
   - id: aulapay-sql-injection
-    message: Posible SQL Injection por concatenacion de studentId en consulta SQL
+    message: Posible SQL Injection. studentId es concatenado directamente en la consulta SQL.
     severity: ERROR
     languages:
       - javascript
-    pattern: |
-      const query = $SQL + studentId;
+    pattern-regex: 'student_id\s*=\s*"\s*\+\s*studentId'
