@@ -1,0 +1,228 @@
+name: AulaPay DevSecOps Gate
+
+on:
+  push:
+    branches:
+      - main
+      - vulnerable-demo
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  sast:
+    name: "SAST - Semgrep"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Instalar Semgrep
+        run: python3 -m pip install semgrep
+
+      - name: Ejecutar analisis SAST
+        run: |
+          echo "================================="
+          echo "     CONTROL SAST - SEMGREP"
+          echo "================================="
+
+          semgrep scan \
+            --config semgrep.yml \
+            --error \
+            app.js
+
+
+  secret-scan:
+    name: "Secrets - Gitleaks"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Ejecutar Secret Scanning
+        run: |
+          echo "================================="
+          echo "     SECRET SCANNING"
+          echo "================================="
+
+          docker run --rm \
+            -v "${{ github.workspace }}:/repo" \
+            zricethezav/gitleaks:latest \
+            detect \
+            --source=/repo \
+            --no-git \
+            --config=/repo/.gitleaks.toml \
+            --exit-code 1
+
+
+  sca:
+    name: "SCA - Dependencias"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validar dependencia simulada
+        run: node scripts/check-sca.js
+
+
+  api-security:
+    name: "API Security - Autorizacion"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Iniciar AulaPay
+        run: |
+          node app.js > app.log 2>&1 &
+          echo $! > app.pid
+          sleep 3
+
+          echo "Contenido del log:"
+          cat app.log
+
+      - name: Prueba acceso indebido 1024 hacia 2048
+        run: |
+          echo "================================="
+          echo " PRUEBA DE AUTORIZACION POR OBJETO"
+          echo "================================="
+          echo "Usuario autenticado: 1024"
+          echo "Recurso solicitado: 2048"
+          echo "Resultado esperado: HTTP 403"
+          echo ""
+
+          STATUS=$(curl -s \
+            -o response.json \
+            -w "%{http_code}" \
+            -H "X-Student-Id: 1024" \
+            http://127.0.0.1:3000/api/payments/2048)
+
+          echo "Respuesta de la API:"
+          cat response.json
+          echo ""
+          echo "HTTP STATUS: $STATUS"
+
+          if [ "$STATUS" != "403" ]; then
+            echo ""
+            echo "================================="
+            echo "PRUEBA FALLIDA"
+            echo "================================="
+            echo "Un estudiante puede consultar"
+            echo "comprobantes pertenecientes a otro."
+            exit 1
+          fi
+
+          echo ""
+          echo "================================="
+          echo "PRUEBA APROBADA"
+          echo "================================="
+          echo "La API bloqueo correctamente"
+          echo "el acceso al recurso de otro usuario."
+
+
+      - name: Prueba acceso autorizado 1024 hacia 1024
+        run: |
+          echo "================================="
+          echo " PRUEBA DE ACCESO AUTORIZADO"
+          echo "================================="
+          echo "Usuario autenticado: 1024"
+          echo "Recurso solicitado: 1024"
+          echo "Resultado esperado: HTTP 200"
+          echo ""
+
+          STATUS=$(curl -s \
+            -o response-own.json \
+            -w "%{http_code}" \
+            -H "X-Student-Id: 1024" \
+            http://127.0.0.1:3000/api/payments/1024)
+
+          echo "Respuesta:"
+          cat response-own.json
+          echo ""
+          echo "HTTP STATUS: $STATUS"
+
+          if [ "$STATUS" != "200" ]; then
+            echo ""
+            echo "PRUEBA FALLIDA"
+            echo "El estudiante no puede consultar su propio comprobante."
+            exit 1
+          fi
+
+          echo ""
+          echo "PRUEBA APROBADA"
+          echo "El estudiante puede consultar su propio comprobante."
+
+
+  security-gate:
+    name: "DECISION FINAL - SECURITY GATE"
+    runs-on: ubuntu-latest
+
+    needs:
+      - sast
+      - secret-scan
+      - sca
+      - api-security
+
+    if: always()
+
+    steps:
+      - name: Mostrar resultados
+        run: |
+          echo "========================================"
+          echo "       AULAPAY DEVSECOPS SECURITY GATE"
+          echo "========================================"
+          echo ""
+          echo "SAST:         ${{ needs.sast.result }}"
+          echo "SECRET SCAN:  ${{ needs.secret-scan.result }}"
+          echo "SCA:          ${{ needs.sca.result }}"
+          echo "API SECURITY: ${{ needs.api-security.result }}"
+          echo ""
+
+      - name: Evaluar Gate
+        run: |
+          if [ "${{ needs.sast.result }}" != "success" ]; then
+            echo "GATE RECHAZADO: SAST fallo."
+            exit 1
+          fi
+
+          if [ "${{ needs.secret-scan.result }}" != "success" ]; then
+            echo "GATE RECHAZADO: Secret Scanning fallo."
+            exit 1
+          fi
+
+          if [ "${{ needs.sca.result }}" != "success" ]; then
+            echo "GATE RECHAZADO: SCA fallo."
+            exit 1
+          fi
+
+          if [ "${{ needs.api-security.result }}" != "success" ]; then
+            echo "GATE RECHAZADO: API Security fallo."
+            exit 1
+          fi
+
+          echo ""
+          echo "========================================"
+          echo "             GATE APROBADO"
+          echo "========================================"
+          echo "Todos los controles DevSecOps pasaron."
+          echo "El cambio puede avanzar."
