@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Matriz de hallazgos - AulaPay</title>
+<style>
+  :root { color-scheme: light; font-family: "Segoe UI", Arial, sans-serif; }
+  body { margin: 0; padding: 32px; background: #f3f6f8; color: #18252d; }
+  section { width: 1180px; box-sizing: border-box; margin: 0 auto 28px; padding: 28px 32px; background: white; border: 1px solid #d3dde3; box-shadow: 0 5px 18px rgba(24,37,45,.08); }
+  h1 { margin: 0 0 22px; font-size: 30px; color: #163f52; }
+  h2 { margin: 0 0 18px; padding-bottom: 10px; border-bottom: 3px solid #2a8391; font-size: 25px; color: #163f52; }
+  h3 { margin: 24px 0 8px; font-size: 20px; color: #1d6471; }
+  p { font-size: 17px; line-height: 1.5; }
+  table { width: 100%; border-collapse: collapse; font-size: 16px; }
+  th { padding: 12px 10px; text-align: left; color: white; background: #1d6471; }
+  td { padding: 12px 10px; vertical-align: top; border: 1px solid #c9d5db; line-height: 1.35; }
+  tr:nth-child(even) td { background: #f1f7f8; }
+  .critical { color: #9a2f2f; font-weight: 700; }
+  .high { color: #a05a10; font-weight: 700; }
+  .medium { color: #6b5c0d; font-weight: 700; }
+  .false-positive { margin-top: 20px; padding: 14px 18px; border-left: 5px solid #2a8391; background: #edf7f7; }
+  code { font-family: Consolas, monospace; font-size: .95em; }
+</style>
+</head>
+<body>
+<section id="matrix">
+  <h1>Matriz de hallazgos - AulaPay</h1>
+  <table>
+    <thead><tr><th>Fuente</th><th>Evidencia</th><th>Impacto</th><th>Criticidad</th><th>Decisión</th></tr></thead>
+    <tbody>
+      <tr><td>API Security Test / Burp Suite</td><td>Usuario 1024 solicita <code>/api/payments/2048</code> y obtiene 200 OK</td><td>Exposición de comprobantes de otro estudiante</td><td class="critical">CRÍTICA</td><td>Bloquear despliegue y corregir autorización</td></tr>
+      <tr><td>SAST / Semgrep</td><td><code>studentId</code> concatenado directamente en consulta SQL</td><td>Posible SQL Injection y acceso indebido a información</td><td class="high">ALTA</td><td>Bloquear y utilizar consulta parametrizada</td></tr>
+      <tr><td>Secret Scan / Gitleaks</td><td><code>sk_test_51HxxExampleToken</code> en <code>.env.example</code></td><td>Posible exposición de credencial</td><td class="high">ALTA inicialmente</td><td>Validar el token. Se determina que es ficticio y se reemplaza por placeholder</td></tr>
+      <tr><td>SCA</td><td>pdf-generator-lib 2.4.1 / CVE-SIM-2025-1842</td><td>Riesgo durante generación de comprobantes</td><td class="medium">MEDIA</td><td>Actualizar a versión 2.4.3</td></tr>
+    </tbody>
+  </table>
+</section>
+<section id="prioritization">
+  <h1>Matriz de hallazgos - AulaPay</h1>
+  <h2>Priorización</h2>
+  <h3>CRÍTICO</h3>
+  <p>La falla de autorización a nivel de objeto tiene la mayor prioridad debido a que un estudiante autenticado puede consultar comprobantes pertenecientes a otro estudiante.</p>
+  <h3>ALTO</h3>
+  <p>La concatenación directa del parámetro <code>studentId</code> dentro de la consulta SQL representa un riesgo de SQL Injection.</p>
+  <p>El supuesto secreto detectado inicialmente se clasifica como alto hasta determinar si corresponde a una credencial real.</p>
+  <h3>MEDIO</h3>
+  <p>La dependencia pdf-generator-lib 2.4.1 presenta una vulnerabilidad simulada de severidad media. Debido a que existe la versión corregida 2.4.3, se decide actualizar.</p>
+  <div class="false-positive"><h3>Falso positivo justificado</h3><p>El valor <code>sk_test_51HxxExampleToken</code> fue localizado en <code>.env.example</code> y contiene claramente la palabra ExampleToken.</p><p>Al tratarse de un valor creado para documentación y no una credencial funcional, se clasifica como falso positivo después de la validación.</p><p>A pesar de ello, se reemplazó por:</p><p><code>PAYMENT_API_KEY=REPLACE_WITH_TEST_KEY</code></p></div>
+</section>
+</body>
+</html>
